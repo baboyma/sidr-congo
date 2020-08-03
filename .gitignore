@@ -46,6 +46,7 @@ vignettes/*.pdf
 *.shp
 *.png
 *.pptx
+*.docx
 
 *_secrets
 *Data
