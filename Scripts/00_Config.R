@@ -19,6 +19,8 @@ dir_graphics <- "Graphics"
 
 dir_docs <- "Documents"
 
+dir_merdata <- "../../MERDATA"
+
 # FILES
 
 list.files(
