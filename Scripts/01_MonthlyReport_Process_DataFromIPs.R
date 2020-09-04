@@ -93,7 +93,7 @@ dir_mr_datasets <- "Data/Monthly Report/Datasets"
                 # Read the content of each sheets
                 dfs <- shts %>%
                     set_names(nm = str_replace_all(., " ", "_")) %>%
-                    map(read_excel, path = file_sub)
+                    map(read_excel, path = file_sub, skip = 1)
 
                 return(dfs)
             })
@@ -123,9 +123,10 @@ dir_mr_datasets <- "Data/Monthly Report/Datasets"
             "Facility"
         )
 
+        ## Remove total rows (1st rows)
         df <- tab_df %>%
             clean_names() %>%
-            filter(!is.na(site_uid))
+            filter(!is.na(site_uid) & !str_detect(tolower(site_uid), "^totaux"))
 
         ## Diff. DSM has different exclusions: rm last 4
         if ( str_detect(tolower(tab_name), "^diff") ) {
@@ -311,6 +312,86 @@ dir_mr_datasets <- "Data/Monthly Report/Datasets"
     }
 
 
+    #' Calculate TX_NET_NEW
+    #'
+    #' @param df Datasets from all IPs as data frame
+    #' @param dta_folder Directory of Processed data folder
+    #' @return Augmented dataset as a data frame
+    #' @export
+    #' @examples
+    #'
+    #' generate_net_new(df = df_proc, dta_folder = "./Data")
+    #'
+    calculate_net_new <- function(df, dta_folder = "./Data/Monthly Report/Datasets") {
+
+        # Get current period
+        curr_pd <- df_proc %>%
+            filter(!is.na(period)) %>%
+            distinct(period) %>%
+            pull()
+
+        print(curr_pd)
+
+        # Identify previous period
+        prev_pd <- as.character(as.integer(curr_pd) - 1)
+
+        print(prev_pd)
+
+        # Locate processed files from previous period
+        files_processed <- list.files(
+            path = here(dta_folder, prev_pd),
+            pattern = "^DRC_Dataset \\d{6} - .*.csv$",
+            full.names = TRUE
+        )
+
+        # Read only individual files
+        files_processed <- files_processed[files_processed %>% str_detect(".ALL.csv$", negate = TRUE)]
+
+        # Check length
+        if (length(files_processed) != 4) {
+
+            print("ERROR - looks like the number of files != 4")
+
+            print(files_processed)
+
+            return(NULL)
+        }
+
+        # Label for new indicator: TX_NET_NEW
+        lbl_tx_curr <- "TX_CURR (N. DSD. Age/Sex/HIVStatus). Receiving ART"
+        lbl_tx_net_new <- "TX_NET_NEW (N. DSD. Age/Sex/HIVStatus). New on ART"
+
+        # Extract previous TX_CURR data
+        df_tx_curr <- files_processed %>%
+            map_dfr(vroom) %>%
+            clean_names() %>%
+            select(-period) %>%
+            filter(str_detect(indicator, "^TX_CURR")) %>%
+            mutate(high_volume = as.character(high_volume)) %>%
+            mutate(indicator = "tx_curr_prev") %>%              # TX_CURR for previous period
+            spread(indicator, value)
+
+        # Calculate TX_NET_NEW based on current and previous TX_CURR's values
+        df <- df %>%
+            filter(str_detect(indicator, "^TX_CURR")) %>%
+            mutate(indicator = "tx_curr_curr") %>%              # TX_CURR for current period
+            spread(indicator, value) %>%
+            left_join(df_tx_curr, by = c("site_uid", "implementing_mechanism", "province", "health_zone",
+                                         "site", "high_volume", "age", "sex", "result", "reporting_level")
+            ) %>%
+            mutate(tx_net_new = ifelse(!is.na(tx_curr_curr) & !is.na(tx_curr_prev),
+                                       tx_curr_curr - tx_curr_prev, NA)) %>%
+            select(-c(tx_curr_curr, tx_curr_prev)) %>%
+            gather(indicator, value, tx_net_new) %>%
+            mutate(indicator = lbl_tx_net_new) %>%
+            relocate(indicator, .after = high_volume) %>%
+            bind_rows(df)
+
+        # return expanded data frame
+        return(df)
+    }
+
+
     #' Export processed files
     #'
     #' @param df_proc
@@ -338,32 +419,40 @@ dir_mr_datasets <- "Data/Monthly Report/Datasets"
         }
 
         ## Filter out NA is any
-        ims <- df_proc %>%
-            filter(!is.na(implementing_mechanism)) %>%
-            distinct(implementing_mechanism) %>%
-            pull()
+        df_proc <- df_proc %>%
+            filter(!is.na(implementing_mechanism))
 
+        ## Export entire dataset
         print("Exporting entire dataset")
 
-        dname <- paste0(output_folder, "/", rep_period, "/", "DRC_Dataset ", rep_period, " - ALL.csv")
+        dname <- paste0(output_folder, "/", rep_period, "/", "DRC_Dataset ", rep_period, " - ALL - ", format(Sys.Date(), "%Y%m%d"), ".csv")
 
         print(dname)
 
-        write_csv(df_proc, path = dname, na = "")
+        df_proc %>%
+            filter(!is.na(implementing_mechanism)) %>%
+            write_csv(path = dname, na = "")
 
+        ## Export dateset by IM
         print("Exporting dataset by im:")
 
+        ## Unique IMs
+        ims <-  df_proc %>%
+            distinct(implementing_mechanism) %>%
+            pull()
+
+        ## Export
         ims %>%
             map(function(im){
 
                 print(im)
 
-                fname <- paste0(output_folder, "/", rep_period, "/", "DRC_Dataset ", rep_period, " - ", im, ".csv")
+                fname <- paste0(output_folder, "/", rep_period, "/", "DRC_Dataset ", rep_period, " - ", im, " - ", format(Sys.Date(), "%Y%m%d"), ".csv")
 
                 print(fname)
 
                 df_proc %>%
-                    filter(implementing_mechanism == im) %>%
+                    filter(!is.na(implementing_mechanism) & implementing_mechanism == im) %>%
                     write_csv(path = fname, na = "")
 
                 return(im)
@@ -375,16 +464,29 @@ dir_mr_datasets <- "Data/Monthly Report/Datasets"
 # TEST ------------------------------------
 
     ## Test - read data from submissions
+    ## Note: dfs > file[IM] > sheet[INDICATOR]
     dfs_subs <- read_submissions(dta_folder = "./Data/Monthly Report/From IPs",
                                  rep_period = "202006")
 
     dfs_subs$IHAP_HK$HTS_TST_FAC %>% glimpse()
 
     ## Test - process data
+    ## 1 tab/file at the time
     df_proc <- dfs_subs %>%
         map_dfr(function(ip_data) {
             ip_data %>% map2_dfr(names(.), process_submissions)
         })
+
+    df_proc %>% glimpse()
+
+    df_proc %>%
+        filter(!is.na(period)) %>%
+        distinct(period) %>%
+        pull()
+
+    df_proc %>%
+        distinct(indicator) %>%
+        pull()
 
     df_proc %>%
         distinct(implementing_mechanism) %>%
@@ -392,6 +494,13 @@ dir_mr_datasets <- "Data/Monthly Report/Datasets"
 
     df_proc %>%
         filter(is.na(implementing_mechanism))
+
+    ## Test - Generate Net NEW
+    ## Read TX_CURR from previous files and calcuate TX_NET_NEW
+    df_proc <- df_proc %>%
+        calculate_net_new(dta_folder = "./Data/Monthly Report/Datasets")
+
+    df_proc %>% glimpse()
 
 
     ## Test - Export ip report data
@@ -454,7 +563,7 @@ dir_mr_datasets <- "Data/Monthly Report/Datasets"
         distinct(indicator) %>%
         pull()
 
-    ## Processed data
+    ## Processed datasets
     data_processed <- list.files(
             path = here(dir_mr_datasets, "202005"),
             pattern = "^DRC_Dataset \\d{6} - .*.csv$",
@@ -609,216 +718,7 @@ dir_mr_datasets <- "Data/Monthly Report/Datasets"
     dfs_submitted$LINKAGES
     dfs_submitted$IHAP_HK
     dfs_submitted$IHAP_KIN$TB_PREV_Num %>% glimpse()
-    dfs_submitted$KHETH_IMPILO$
 
 
-    dfs_submitted %>%
-        map_dfr(function(df_ip){
-            df_ip %>%
-                map2_dfr(names(.), process_submissions)
-        })
 
-    #dfs_submitted$LINKAGES %>%
-    dfs_submitted$IHAP_HK %>%
-        map2_dfr(names(.), function(x, y) {
-
-            #tab <- y
-            #df <- x
-
-            ## Flag level
-            rep_lvl <- ifelse(
-                str_detect(tolower(y), "^hts_") & (str_detect(tolower(y), "_com$") | str_detect(tolower(y), "_mobile_mod")),
-                "Community",
-                "Facility"
-            )
-
-            df <- x %>%
-                clean_names() %>%
-                filter(!is.na(site_uid))
-
-            ## Diff. DSM has different exclusions: rm last 4
-            if ( str_detect(tolower(y), "^diff") ) {
-                df <- df %>% select(1:(length(names(.)) - 4))
-            }
-            else {
-                df <- df %>% select(!starts_with("total"))
-            }
-
-            ## Reshape from wide to long & transform
-            df <- df %>%
-                gather(key = "disaggregates", value = "value", -c(site_uid:high_volume)) %>%
-                mutate(
-                    indicator = y,
-                    indicator2 = indicator,
-                    reporting_level = rep_lvl,
-                    dlength = NA,
-                    result = NA,
-                    sex = NA,
-                    age = NA
-                )
-
-            print(y)
-
-            # Unpack HTS_TST Disaggs
-            if ( str_detect(tolower(y), "^hts_") ) {
-
-                df <- df %>%
-                    rowwise() %>%
-                    mutate(
-                        dlength = length(unlist(str_split(disaggregates, "_"))),
-                        result = str_to_title(last(unlist(str_split(disaggregates, "_")))),
-                        sex = nth(unlist(str_split(disaggregates, "_")), n=dlength-1),
-                        sex = str_to_title(str_remove(sex, "s$")),
-                        age = ifelse(
-                            dlength - 2 > 1,
-                            paste(unlist(str_split(disaggregates, "_"))[1], unlist(str_split(disaggregates, "_"))[2], sep = "-"),
-                            unlist(str_split(disaggregates, "_"))[1]
-                        ),
-                        age = ifelse(age == "x1", "<01", ifelse(age == "x50", "50+", str_remove(age, "x"))),
-                        age = ifelse(age == "1-4", "01-04", ifelse(age == "5-9", "05-09", age)),
-                        age = ifelse(age == "unknown-age", "Unknown Age", age)
-                    ) %>%
-                    ungroup() %>%
-                    mutate(
-                        indicator2 = ifelse(
-                            str_detect(tolower(indicator), "^hts_tst_a|^hts_tst_f|^hts_tst_c") & tolower(result) == "positive",
-                            "HTS_TST_POS (N. DSD). HTS received results",
-                            ifelse(
-                                str_detect(tolower(indicator), "^hts_tst_a|^hts_tst_f|^hts_tst_c") & tolower(result) == "negative",
-                                "HTS_TST_NEG (N. DSD). HTS received results",
-                                ifelse(
-                                    str_detect(tolower(indicator), "^hts_tst_m") & tolower(result) == "positive",
-                                    "HTS_TST_POS (N. DSD. MbMod). HTS received results",
-                                    ifelse(
-                                        str_detect(tolower(indicator), "^hts_tst_m") & tolower(result) == "negative",
-                                        "HTS_TST_NEG (N. DSD. MbMod). HTS received results",
-                                        ifelse(
-                                            str_detect(tolower(indicator), "^hts_index") & tolower(result) == "positive",
-                                            "HTS_INDEX_POS (N. DSD). HTS received results",
-                                            ifelse(
-                                                str_detect(tolower(indicator), "^hts_index") & tolower(result) == "negative",
-                                                "HTS_INDEX_NEG (N. DSD). HTS received results",
-                                                indicator2
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-            }
-            ## TX
-            else if ( str_detect(tolower(y), "^tx_") ) {
-
-                df <- df %>%
-                    rowwise() %>%
-                    mutate(
-                        dlength = length(unlist(str_split(disaggregates, "_"))),
-                        result = "Positive",
-                        sex = last(unlist(str_split(disaggregates, "_"))),
-                        sex = str_to_title(str_remove(sex, "s$")),
-                        age = ifelse(
-                            dlength - 1 > 1,
-                            paste(unlist(str_split(disaggregates, "_"))[1], unlist(str_split(disaggregates, "_"))[2], sep = "-"),
-                            unlist(str_split(disaggregates, "_"))[1]
-                        ),
-                        age = ifelse(age == "x1", "<01", ifelse(age == "x50", "50+", str_remove(age, "x"))),
-                        age = ifelse(age == "1-4", "01-04", ifelse(age == "5-9", "05-09", age)),
-                        age = ifelse(age == "unknown-age", "Unknown Age", age)
-                    ) %>%
-                    ungroup() %>%
-                    mutate(
-                        indicator2 = ifelse(
-                            str_detect(tolower(indicator), "^tx_curr"),
-                            "TX_CURR (N. DSD. Age/Sex/HIVStatus). Receiving ART",
-                            ifelse(
-                                str_detect(tolower(indicator), "^tx_new"),
-                                "TX_NEW (N. DSD. Age/Sex/HIVStatus). New on ART",
-                                indicator2
-                            )
-                        )
-                    )
-            }
-            ## TB
-            else if ( str_detect(tolower(y), "^tb_prev_") ) {
-
-                df <- df %>%
-                    mutate(
-                        result = NA,
-                        sex = ifelse(tolower(indicator) == "tb_prev_num" & str_detect(disaggregates, "_female"), "Female",
-                                     ifelse(tolower(indicator) == "tb_prev_num" & str_detect(disaggregates, "_male"), "Male",
-                                            sex)),
-                        age = ifelse(tolower(indicator) == "tb_prev_num" & str_detect(disaggregates, "15_female$|_male$"), "<15",
-                                     ifelse(tolower(indicator) == "tb_prev_num" & str_detect(disaggregates, "15_female_2$|_male_2$"), "15+",
-                                            ifelse(tolower(indicator) == "tb_prev_num" & str_detect(disaggregates, "_unknown_age_f|_unknown_age_m"), "Unknown Age",
-                                                   age))),
-                        indicator2 = ifelse(
-                            tolower(indicator) == "tb_prev_num" & str_detect(disaggregates, "^ipt_newly_enrolled_on_art_"),
-                            "IPT Newly enrolled on ART",
-                            ifelse(
-                                tolower(indicator) == "tb_prev_num" & str_detect(disaggregates, "^ipt_previously_enrolled_on_art_"),
-                                "IPT Previously enrolled on ART",
-                                ifelse(
-                                    tolower(indicator) == "tb_prev_num" & str_detect(disaggregates, "^alternative_tpt_regiment_newly_enrolled_on_art_"),
-                                    "Alternative TPT Regiment Newly enrolled on ART",
-                                    ifelse(
-                                        tolower(indicator) == "tb_prev_num" & str_detect(disaggregates, "^alternative_tpt_regiment_previously_enrolled_on_art_"),
-                                        "Alternative TPT Regiment Previously enrolled on ART",
-                                        indicator2
-                                    )
-                                )
-                            )
-
-                        )
-                    )
-            }
-            ## Diff. DSM
-            else if (str_detect(tolower(y), "^diff")) {
-
-                df <- df %>%
-                    mutate(
-                        indicator2 = case_when(
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "total_enrolled_in_podi" ~ "Enrolled in PODI",
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "total_enrolled_in_fast_track" ~ "Enrolled in Fast Track",
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "total_enrolled_in_com_art" ~ "Enrolled in Com ART",
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "total_enrolled_in_adherence_club" ~ "Enrolled in Adherence Club",
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "new_enrolled_in_podi" ~ "New Enrolled in PODI",
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "new_enrolled_in_fast_track" ~ "New Enrolled in Fast Track",
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "new_enrolled_in_com_art" ~ "ew Enrolled in Com ART",
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "new_enrolled_in_adherence_club" ~ "New Enrolled in Adherence Club",
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "number_non_elligible_yet" ~ "Non-Elligible Yet",
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "number_non_stable_patients" ~ "Non Stable Patients",
-                            indicator == "Diff._Delivery_Service_Models" & disaggregates == "number_stable_patients_who_refused_to_adhere_to_a_model" ~ "Stable Patients who refused to adhere to a model",
-                            TRUE ~ disaggregates
-                        )
-                    )
-            }
-            ## VL
-            else if (str_detect(tolower(y), "^cv")) {
-
-                df <- df %>%
-                    mutate(
-                        indicator2 = case_when(
-                            indicator == "CV" & disaggregates == "elligibles_attendus_pour_la_cv" ~ "Expected Elligible for the VL",
-                            indicator == "CV" & disaggregates == "prelevement_effectues" ~ "Collected Specimens",
-                            indicator == "CV" & disaggregates == "resultats_retires" ~ "Collected Results",
-                            indicator == "CV" & disaggregates == "cv_supprimee" ~ "VL Suppressed",
-                            TRUE ~ disaggregates
-                        )
-                    )
-            }
-            ## Potential errors
-            else {
-                print(paste0("Unknown tab: ", y))
-            }
-
-            df <- df %>%
-                mutate(indicator = indicator2) %>%
-                select(-c(indicator2, dlength, disaggregates)) %>%
-                relocate(indicator, age, sex, result, reporting_level, value, .after = high_volume)
-
-            return(df)
-
-        }) %>%
-        View()
 
