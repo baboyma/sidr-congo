@@ -11,7 +11,6 @@ library(tidyverse)
 library(readxl)
 library(vroom)
 library(janitor)
-library(arrow)
 
 # CONFIGS --------------------------------
 
