@@ -41,6 +41,8 @@ towns <- c("Kasaji", "Kipushi (ville) ")
 terr <- get_raster()
 
 ## Admins
+
+## Country Boundaries
 adm0 <- raster::getData(
         name = "GADM",
         country = country,
@@ -50,8 +52,7 @@ adm0 <- raster::getData(
     st_as_sf() %>%
     clean_names()
 
-#adm0 <- get_admin0(countries = country)
-
+## Provinces
 adm1 <- raster::getData(
         name = "GADM",
         country = country,
@@ -62,46 +63,7 @@ adm1 <- raster::getData(
     clean_names() %>%
     dplyr::select(province = name_1)
 
-#adm1 <- get_admin1(countries = country)
-
-basemap <- terrain_map(countries = country,
-                       adm0 = adm0,
-                       adm1 = adm1,
-                       terr_path = dir_raster,
-                       mask = TRUE)
-
-
-# Basemap with lbls
-basemap_lbl <- basemap +
-    geom_sf_text(data = adm1,
-                 aes(label = province), size = 2.5)
-
-basemap_lbl
-
-ggsave(here("./Graphics", "DRC_Basemap_with_labels.png"),
-       plot = last_plot(), scale = 1.2, dpi = 310,
-       width = 10, height = 7, units = "in")
-
-
-
-## Sub regions
-adm1_kin <- adm1 %>%
-    filter(province == provs[1])
-
-adm1_kin_bb <- adm1_kin %>%
-    st_bbox() %>%
-    st_as_sfc()
-
-adm1_se <- adm1 %>%
-    filter(province %in% provs[2:3])
-
-adm1_se_bb <- adm1_se %>%
-    st_bbox() %>%
-    st_as_sfc()
-
-adm1_aoi <- adm1 %>%
-    filter(province %in% provs)
-
+## Territories
 adm2 <- raster::getData(
         name = "GADM",
         country = country,
@@ -112,28 +74,67 @@ adm2 <- raster::getData(
     clean_names() %>%
     dplyr::select(province = name_1, territory = name_2, type = engtype_2)
 
-adm2_aoi <- adm2 %>%
-    filter(province %in% provs)
+
+## Country Basemap
+basemap <- terrain_map(countries = country,
+                       adm0 = adm0,
+                       adm1 = adm1,
+                       terr_path = dir_raster,
+                       mask = TRUE)
+
+
+# Basemap with lbls
+basemap_lbl <- basemap +
+    geom_sf_text(data = adm1, aes(label = province), size = 2.5)
+
+basemap_lbl
+
+# ggsave(here("./Graphics", "DRC_Basemap_with_labels.png"),
+#        plot = last_plot(), scale = 1.2, dpi = 310,
+#        width = 10, height = 7, units = "in")
+
+
+## Sub regions
+
+## Kinshasa
+adm1_kin <- adm1 %>%
+    filter(province == provs[1])
+
+adm1_kin_bb <- adm1_kin %>%
+    st_bbox() %>%
+    st_as_sfc()
 
 adm2_kin <- adm2 %>%
     filter(province == provs[1])
 
+## South East
+adm1_se <- adm1 %>%
+    filter(province %in% provs[2:3])
+
+adm1_se_bb <- adm1_se %>%
+    st_bbox() %>%
+    st_as_sfc()
+
 adm2_se <- adm2 %>%
-    filter(province %in% provs[2:3],
-           !territory %in% towns)
+    filter(province %in% provs[2:3], !territory %in% towns)
 
-adm2_se %>%
-    st_set_geometry(NULL) %>%
-    print()
+## Area of Interest
+adm1_aoi <- adm1 %>%
+    filter(province %in% provs)
 
+adm2_aoi <- adm2 %>%
+    filter(province %in% provs)
+
+## Kasaji
 adm2_kas <- adm2 %>%
     filter(territory == "Kasaji")
 
+## Kipushi (ville)
 adm2_kip <- adm2 %>%
     filter(territory == "Kipushi (ville) ")
 
 
-# VIZ
+# VIZ --------------------------------------------------------------
 
 # AOI with Labels
 basemap_aoi_lbl <- basemap +
@@ -141,26 +142,26 @@ basemap_aoi_lbl <- basemap +
     geom_sf(data = adm0, fill = NA, lwd = .5) +
     geom_sf_text(data = adm1_aoi, aes(label = province), size = 3)
 
-basemap_aoi_lbl
+#basemap_aoi_lbl
 
-ggsave(here("./Graphics", "DRC_Basemap_aoi_with_labels.png"),
-       plot = last_plot(), scale = 1.2, dpi = 310,
-       width = 10, height = 7, units = "in")
+# ggsave(here("./Graphics", "DRC_Basemap_aoi_with_labels.png"),
+#        plot = last_plot(), scale = 1.2, dpi = 310,
+#        width = 10, height = 7, units = "in")
 
 # AOI without Labels
 basemap_aoi <- basemap +
     geom_sf(data = adm1_aoi, fill = USAID_blue, alpha = .4) +
     geom_sf(data = adm0, fill = NA, lwd = .5)
 
-basemap_aoi
+#basemap_aoi
 
-ggsave(here("./Graphics", "DRC_Basemap_aoi_without_labels.png"),
-       plot = last_plot(), scale = 1.2, dpi = 310,
-       width = 10, height = 7, units = "in")
+# ggsave(here("./Graphics", "DRC_Basemap_aoi_without_labels.png"),
+#        plot = last_plot(), scale = 1.2, dpi = 310,
+#        width = 10, height = 7, units = "in")
 
 
 # AOI
-base <- adm1 %>%
+basemap_aoi_box <- adm1 %>%
     ggplot() +
     geom_sf(fill = NA, lwd = .1) +
     #geom_sf(data = adm2, fill = NA, linetype = "dotted", lwd = .2) +
@@ -171,39 +172,47 @@ base <- adm1 %>%
     #geom_sf_text(data = adm1_aoi, aes(label = province), size = 2.5) +
     si_style_map()
 
-base
+#basemap_aoi_box
 
+## Kinshasa only
 kin <- adm2_kin %>%
     ggplot() +
-    geom_sf(aes(fill = type),
-            linetype = "dotted", lwd = .4,
-            show.legend = FALSE) +
+    geom_sf(fill = NA, linetype = "dotted", lwd = .4, show.legend = FALSE) +
     geom_sf(data = adm1_kin, fill = NA, lwd = .7) +
-    geom_sf_text(aes(label = territory), size = 2.5) +
+    geom_sf_text(aes(label = territory), size = 5) +
     si_style_map()
 
 kin
 
+## Kas only
 kas <- adm2_kas %>%
     ggplot() +
-    geom_sf(aes(fill = type), lwd = .7,
-            show.legend = FALSE) +
-    geom_sf_text(aes(label = territory), size = 2.5) +
+    geom_sf(fill = NA, lwd = .7, show.legend = FALSE) +
+    geom_sf_text(aes(label = territory), size = 5) +
     si_style_map()
 
 kas
 
+## Kip only
 kip <- adm2_kip %>%
     ggplot() +
-    geom_sf(aes(fill = type), lwd = .7,
-            show.legend = FALSE) +
-    geom_sf_text(aes(label = territory), size = 2.5) +
+    geom_sf(fill = NA, lwd = .7, show.legend = FALSE) +
+    geom_sf_text(aes(label = territory), size = 5) +
     si_style_map()
 
 kip
 
-# SE Area
+## se only
+se_area <- adm2_se %>%
+    ggplot() +
+    geom_sf(fill = NA, lwd = .3, show.legend = FALSE) +
+    geom_sf(data = adm1_se, fill = NA, size = 1) +
+    geom_sf_text(aes(label = territory), size = 4, check_overlap = TRUE) +
+    si_style_map()
 
+se_area
+
+# SE Area Basemap
 se_adm0 <- adm1_se %>% summarise()
 
 se_base <- get_basemap(admin0 = se_adm0,
@@ -213,30 +222,31 @@ se_base <- get_basemap(admin0 = se_adm0,
 
 se_base
 
+# SE Basemap with labels
+se_base_lbl <- se_base +
+    geom_sf_text(data = adm2_se,
+                 aes(label = territory), size = 3)
+
+se_base_lbl
+
+# Kin Area Basemap
 kin_base <- get_basemap(admin0 = adm1_kin,
                         terr_raster = terr)
 
 kin_base
 
-## SE Area
-basemap_se_area <- se_base +
-    geom_sf_text(data = adm2_se,
-                 aes(label = territory), size = 3)
-
-basemap_se_area
-
-## Kin Area
-basemap_kin_area <- kin_base +
+## Kin Area Basemap
+kin_area_lbl <- kin_base +
     geom_sf_text(data = adm2_kin,
                  aes(label = territory), size = 4)
 
-basemap_kin_area
+kin_area_lbl
 
 
 ## PEPFAR AOI Map
 basemap_pepfar <- ggdraw() +
-    draw_plot(basemap_se_area) +
-    draw_plot(basemap_kin_area, x = .05, y = .05,
+    draw_plot(se_base) +
+    draw_plot(kin_base, x = .05, y = .05,
               width = .3,
               height = .3) +
     draw_plot(basemap_aoi, x = .4, y = .05,
@@ -246,10 +256,9 @@ basemap_pepfar <- ggdraw() +
 
 basemap_pepfar
 
-ggsave(here("./Graphics", "DRC_Basemap_pepfar_with_labels.png"),
-       plot = last_plot(), scale = 1.2, dpi = 310,
-       width = 10, height = 7, units = "in")
-
+# ggsave(here("./Graphics", "DRC_Basemap_pepfar_with_labels.png"),
+#        plot = last_plot(), scale = 1.2, dpi = 310,
+#        width = 10, height = 7, units = "in")
 
 
 # Map composition

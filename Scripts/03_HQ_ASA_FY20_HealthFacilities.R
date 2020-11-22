@@ -23,6 +23,9 @@ library(extrafont)
 
 source("./Scripts/00_Config.R")
 
+# GLOBAL ----------------------------------
+
+country <- "Democratic Republic of the Congo"
 
 # Files
 
@@ -31,6 +34,8 @@ file_fac <- list.files(
     pattern = country,
     full.names = TRUE
 )
+
+file_fac
 
 # DATA
 
