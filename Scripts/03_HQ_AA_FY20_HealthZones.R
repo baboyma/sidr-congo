@@ -75,6 +75,25 @@ adm2 <- raster::getData(
     dplyr::select(province = name_1, territory = name_2, type = engtype_2)
 
 
+## PEPFAR/DRC Health Zones
+hzones <- list.files(
+        path = dir_geodata,
+        pattern = "Health_Zones_DRC_.*.shp",
+        recursive = TRUE,
+        full.names = TRUE
+    ) %>%
+    sort() %>%
+    last() %>%
+    read_sf()
+
+hzones %>% st_set_geometry(NULL) %>% glimpse()
+
+hzones %>%
+    ggplot() +
+    geom_sf(fill = NA) +
+    si_style_map()
+
+
 ## Country Basemap
 basemap <- terrain_map(countries = country,
                        adm0 = adm0,
