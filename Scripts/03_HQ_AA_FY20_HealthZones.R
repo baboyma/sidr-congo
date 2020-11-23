@@ -20,6 +20,7 @@ library(patchwork) # use of inset_element
 library(extrafont)
 
 
+
 # CONFIGS --------------------------------
 
 source("./Scripts/00_Config.R")
@@ -58,6 +59,7 @@ adm0 <- raster::getData(
     st_as_sf() %>%
     clean_names()
 
+
 ## Provinces
 adm1 <- raster::getData(
         name = "GADM",
@@ -68,6 +70,7 @@ adm1 <- raster::getData(
     st_as_sf() %>%
     clean_names() %>%
     dplyr::select(province = name_1)
+
 
 ## Territories
 adm2 <- raster::getData(
@@ -132,13 +135,14 @@ adm1_kin_bb <- adm1_kin %>%
 adm2_kin <- adm2 %>%
     filter(province == provs[1])
 
-## South East
+## South Easta
 adm1_se <- adm1 %>%
     filter(province %in% provs[2:3])
 
 adm1_se_bb <- adm1_se %>%
     st_bbox() %>%
     st_as_sfc()
+
 
 adm2_se <- adm2 %>%
     filter(province %in% provs[2:3], !territory %in% towns)
@@ -254,6 +258,7 @@ kas <- adm2_kas %>%
 
 kas
 
+
 ## Kip only
 kip <- adm2_kip %>%
     ggplot() +
@@ -263,7 +268,6 @@ kip <- adm2_kip %>%
     si_style_map()
 
 kip
-
 
 ## se only
 se_area <- adm2_se %>%
@@ -347,7 +351,9 @@ map <- ggdraw() +
 
 map
 
+
 # map <- base +
 #     inset_element(kin, left = .5, bottom = .5, right = .9, top = .9)
 #     inset_element(se_area, left = .5, bottom = .5, right = .9, top = .9)
+
 
