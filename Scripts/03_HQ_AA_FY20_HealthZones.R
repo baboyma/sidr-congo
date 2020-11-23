@@ -19,6 +19,7 @@ library(here)
 library(patchwork) # use of inset_element
 library(extrafont)
 
+
 # CONFIGS --------------------------------
 
 source("./Scripts/00_Config.R")
@@ -26,6 +27,7 @@ source("./Scripts/00_Config.R")
 # GLABALS
 
 country <- "Democratic Republic of the Congo"
+
 iso <- "DRC"
 
 provs <- c("Kinshasa", "Lualaba", "Haut-Katanga")
@@ -43,6 +45,9 @@ terr <- get_raster()
 ## Admins
 
 ## Country Boundaries
+
+## Admins
+
 adm0 <- raster::getData(
         name = "GADM",
         country = country,
@@ -51,6 +56,7 @@ adm0 <- raster::getData(
     ) %>%
     st_as_sf() %>%
     clean_names()
+
 
 ## Provinces
 adm1 <- raster::getData(
@@ -62,6 +68,7 @@ adm1 <- raster::getData(
     st_as_sf() %>%
     clean_names() %>%
     dplyr::select(province = name_1)
+
 
 ## Territories
 adm2 <- raster::getData(
@@ -123,6 +130,7 @@ adm1_kin_bb <- adm1_kin %>%
     st_bbox() %>%
     st_as_sfc()
 
+
 adm2_kin <- adm2 %>%
     filter(province == provs[1])
 
@@ -133,6 +141,7 @@ adm1_se <- adm1 %>%
 adm1_se_bb <- adm1_se %>%
     st_bbox() %>%
     st_as_sfc()
+
 
 adm2_se <- adm2 %>%
     filter(province %in% provs[2:3], !territory %in% towns)
@@ -149,6 +158,37 @@ adm2_kas <- adm2 %>%
     filter(territory == "Kasaji")
 
 ## Kipushi (ville)
+adm1_aoi <- adm1 %>%
+    filter(province %in% provs)
+
+adm2 <- raster::getData(
+        name = "GADM",
+        country = country,
+        level = 2,
+        path = here(dir_data, "vector")
+    ) %>%
+    st_as_sf() %>%
+    clean_names() %>%
+    dplyr::select(province = name_1, territory = name_2, type = engtype_2)
+
+adm2_aoi <- adm2 %>%
+    filter(province %in% provs)
+
+adm2_kin <- adm2 %>%
+    filter(province == provs[1])
+
+adm2_se <- adm2 %>%
+    filter(province %in% provs[2:3],
+           !territory %in% towns)
+
+adm2_se %>%
+    st_set_geometry(NULL) %>%
+    print()
+
+adm2_kas <- adm2 %>%
+    filter(territory == "Kasaji")
+
+
 adm2_kip <- adm2 %>%
     filter(territory == "Kipushi (ville) ")
 
@@ -191,32 +231,40 @@ basemap_aoi_box <- adm1 %>%
     #geom_sf_text(data = adm1_aoi, aes(label = province), size = 2.5) +
     si_style_map()
 
+
 #basemap_aoi_box
 
 ## Kinshasa only
 kin <- adm2_kin %>%
     ggplot() +
-    geom_sf(fill = NA, linetype = "dotted", lwd = .4, show.legend = FALSE) +
+    geom_sf(aes(fill = type),
+            linetype = "dotted", lwd = .4,
+            show.legend = FALSE) +
     geom_sf(data = adm1_kin, fill = NA, lwd = .7) +
-    geom_sf_text(aes(label = territory), size = 5) +
+    geom_sf_text(aes(label = territory), size = 2.5) +
     si_style_map()
 
 kin
 
+
 ## Kas only
+
 kas <- adm2_kas %>%
     ggplot() +
-    geom_sf(fill = NA, lwd = .7, show.legend = FALSE) +
-    geom_sf_text(aes(label = territory), size = 5) +
+    geom_sf(aes(fill = type), lwd = .7,
+            show.legend = FALSE) +
+    geom_sf_text(aes(label = territory), size = 2.5) +
     si_style_map()
 
 kas
 
+
 ## Kip only
 kip <- adm2_kip %>%
     ggplot() +
-    geom_sf(fill = NA, lwd = .7, show.legend = FALSE) +
-    geom_sf_text(aes(label = territory), size = 5) +
+    geom_sf(aes(fill = type), lwd = .7,
+            show.legend = FALSE) +
+    geom_sf_text(aes(label = territory), size = 2.5) +
     si_style_map()
 
 kip
@@ -224,12 +272,15 @@ kip
 ## se only
 se_area <- adm2_se %>%
     ggplot() +
-    geom_sf(fill = NA, lwd = .3, show.legend = FALSE) +
-    geom_sf(data = adm1_se, fill = NA, size = 1) +
-    geom_sf_text(aes(label = territory), size = 4, check_overlap = TRUE) +
+    geom_sf(aes(fill = type),
+            linetype = "dotted", lwd = .4,
+            show.legend = FALSE) +
+    geom_sf(data = adm1_se, fill = NA, lwd = .7) +
+    geom_sf_text(aes(label = territory), size = 3) +
     si_style_map()
 
 se_area
+
 
 # SE Area Basemap
 se_adm0 <- adm1_se %>% summarise()
