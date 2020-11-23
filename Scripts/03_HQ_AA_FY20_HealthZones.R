@@ -14,12 +14,17 @@ library(raster)
 library(sf)
 library(sp)
 library(gisr)
+<<<<<<< HEAD
 library(glitr)
 library(here)
 library(patchwork) # use of inset_element
 library(extrafont)
 
 
+=======
+library(here)
+library(patchwork) # use of inset_element
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 
 # CONFIGS --------------------------------
 
@@ -28,7 +33,10 @@ source("./Scripts/00_Config.R")
 # GLABALS
 
 country <- "Democratic Republic of the Congo"
+<<<<<<< HEAD
 
+=======
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 iso <- "DRC"
 
 provs <- c("Kinshasa", "Lualaba", "Haut-Katanga")
@@ -39,6 +47,7 @@ towns <- c("Kasaji", "Kipushi (ville) ")
 
 ## Geodata
 
+<<<<<<< HEAD
 ## Terrain data
 
 terr <- get_raster()
@@ -49,6 +58,8 @@ terr <- get_raster()
 
 ## Admins
 
+=======
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 ## Admins
 adm0 <- raster::getData(
         name = "GADM",
@@ -59,8 +70,11 @@ adm0 <- raster::getData(
     st_as_sf() %>%
     clean_names()
 
+<<<<<<< HEAD
 
 ## Provinces
+=======
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 adm1 <- raster::getData(
         name = "GADM",
         country = country,
@@ -71,6 +85,7 @@ adm1 <- raster::getData(
     clean_names() %>%
     dplyr::select(province = name_1)
 
+<<<<<<< HEAD
 
 ## Territories
 adm2 <- raster::getData(
@@ -125,6 +140,8 @@ basemap_lbl
 ## Sub regions
 
 ## Kinshasa
+=======
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 adm1_kin <- adm1 %>%
     filter(province == provs[1])
 
@@ -132,10 +149,13 @@ adm1_kin_bb <- adm1_kin %>%
     st_bbox() %>%
     st_as_sfc()
 
+<<<<<<< HEAD
 adm2_kin <- adm2 %>%
     filter(province == provs[1])
 
 ## South Easta
+=======
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 adm1_se <- adm1 %>%
     filter(province %in% provs[2:3])
 
@@ -143,6 +163,7 @@ adm1_se_bb <- adm1_se %>%
     st_bbox() %>%
     st_as_sfc()
 
+<<<<<<< HEAD
 
 adm2_se <- adm2 %>%
     filter(province %in% provs[2:3], !territory %in% towns)
@@ -159,6 +180,8 @@ adm2_kas <- adm2 %>%
     filter(territory == "Kasaji")
 
 ## Kipushi (ville)
+=======
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 adm1_aoi <- adm1 %>%
     filter(province %in% provs)
 
@@ -193,6 +216,7 @@ adm2_kip <- adm2 %>%
     filter(territory == "Kipushi (ville) ")
 
 
+<<<<<<< HEAD
 
 # VIZ --------------------------------------------------------------
 
@@ -221,6 +245,9 @@ basemap_aoi <- basemap +
 
 
 # AOI
+=======
+# VIZ
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 base <- adm1 %>%
     ggplot() +
     geom_sf(fill = NA, lwd = .1) +
@@ -232,10 +259,15 @@ base <- adm1 %>%
     #geom_sf_text(data = adm1_aoi, aes(label = province), size = 2.5) +
     si_style_map()
 
+<<<<<<< HEAD
 
 #basemap_aoi_box
 
 ## Kinshasa only
+=======
+base
+
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 kin <- adm2_kin %>%
     ggplot() +
     geom_sf(aes(fill = type),
@@ -247,8 +279,11 @@ kin <- adm2_kin %>%
 
 kin
 
+<<<<<<< HEAD
 
 ## Kas only
+=======
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 kas <- adm2_kas %>%
     ggplot() +
     geom_sf(aes(fill = type), lwd = .7,
@@ -258,8 +293,11 @@ kas <- adm2_kas %>%
 
 kas
 
+<<<<<<< HEAD
 
 ## Kip only
+=======
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 kip <- adm2_kip %>%
     ggplot() +
     geom_sf(aes(fill = type), lwd = .7,
@@ -269,7 +307,10 @@ kip <- adm2_kip %>%
 
 kip
 
+<<<<<<< HEAD
 ## se only
+=======
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 se_area <- adm2_se %>%
     ggplot() +
     geom_sf(aes(fill = type),
@@ -281,6 +322,7 @@ se_area <- adm2_se %>%
 
 se_area
 
+<<<<<<< HEAD
 
 # SE Area Basemap
 se_adm0 <- adm1_se %>% summarise()
@@ -332,6 +374,17 @@ basemap_pepfar
 
 
 # Map composition
+=======
+# Map Composition
+map <- ggdraw() +
+    draw_plot(base) +
+    draw_plot(se_area,
+              x = .05, y = .2
+              #width = .5,
+              #height = .3
+              )
+
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 map <- ggdraw() +
     draw_plot(se_area) +
     draw_plot(kin, x = .05, y = .05,
@@ -352,8 +405,14 @@ map <- ggdraw() +
 map
 
 
+<<<<<<< HEAD
 # map <- base +
 #     inset_element(kin, left = .5, bottom = .5, right = .9, top = .9)
 #     inset_element(se_area, left = .5, bottom = .5, right = .9, top = .9)
 
+=======
+map <- base +
+    inset_element(kin, left = .5, bottom = .5, right = .9, top = .9)
+    inset_element(se_area, left = .5, bottom = .5, right = .9, top = .9)
+>>>>>>> 408d01c843f74f909504e801acf654fa06ad8b3a
 
