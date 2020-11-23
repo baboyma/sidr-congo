@@ -255,11 +255,11 @@ kin_base <- get_basemap(admin0 = adm1_kin,
 kin_base
 
 ## Kin Area Basemap
-kin_area_lbl <- kin_base +
+kin_base_lbl <- kin_base +
     geom_sf_text(data = adm2_kin,
                  aes(label = territory), size = 4)
 
-kin_area_lbl
+kin_base_lbl
 
 
 ## PEPFAR AOI Map
