@@ -52,7 +52,9 @@ weeks <- 52
 
 # DATIM base
 baseurl <- "https://final.datim.org/"
-source("../../../Documents/funny_things.R")
+#source("../../../Documents/funny_things.R")
+source("../_secrets/credentials.R")
+source("../_setup/00_Setup.R")
 
 # IMPORT ------------------------------------------------------------------
 
@@ -110,11 +112,11 @@ df_covid_pepfar <- df_covid %>%
 df_covid_pepfar <- df_covid_pepfar %>%
     filter(cases >= 10)
 
-df_covid_pepfar_top <- df_covid_pepfar %>%
-    filter(countryname %in% top_tx) %>%
-    group_by(countryname) %>%
-    mutate(lab = case_when(date == max(date) ~ iso)) %>%
-    ungroup()
+# df_covid_pepfar_top <- df_covid_pepfar %>%
+#     filter(countryname %in% top_tx) %>%
+#     group_by(countryname) %>%
+#     mutate(lab = case_when(date == max(date) ~ iso)) %>%
+#     ungroup()
 
 
 # MUNGE OXFORD DATA -------------------------------------------------------
@@ -279,7 +281,7 @@ df_covid_stringe %>%
     # geom_hline(yintercept = -5, size = 2, color = "white") +
     geom_col(aes(y = -50, fill = (color)), alpha = 0.85) +
     geom_col(aes(y = -10), fill = "white") +
-    facet_wrap(~ paste0(sort_var, "\n")) +
+    #facet_wrap(~ paste0(sort_var, "\n")) +
     scale_fill_identity() +
     scale_x_date(
         limits = as.Date(c("2020-03-01", "2020-11-30")),
@@ -288,17 +290,19 @@ df_covid_stringe %>%
     # scale_y_log10() +
     si_style_ygrid() +
     labs(
-        title = "DAILY COVID-19 CASES ON THE RISE IN FY21Q1",
+        #title = "DAILY COVID-19 CASES ON THE RISE IN FY21Q1",
         caption = "Source: JHU COVID-19 feed + stringecy index from Blavatnik School of Government at Oxford University",
         x = NULL, y = NULL
     )
 
 
 # Save using dimensions of google slides and setting dingbats = F to render fonts in .AI
-ggsave(file.path(dir_graphics, "DRC_2020_COVID_Daily_Cases.png"),
+ggsave(file.path(dir_graphics,
+                 paste0("DRC_2020_COVID_Daily_Cases_",
+                        format(Sys.Date(), "%Y%m%d"), ".png")),
        plot = last_plot(),
        #useDingbats = F,
-       width = 10, height = 4
+       width = 10, height = 5
        #,dpi = "retina"
 )
 
