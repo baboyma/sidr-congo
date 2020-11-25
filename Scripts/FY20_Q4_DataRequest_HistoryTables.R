@@ -184,7 +184,8 @@ write_csv(x = df_snu1_all,
                                   " - Overview_snu1_tbl_q",
                                   curr_pd,
                                   "_", format(Sys.Date(), "%Y%m%d"),
-                                  ".csv")))
+                                  ".csv")),
+          na = "")
 
 # PSNU Summary
 df_psnu_all <- df_cntry %>%
@@ -216,7 +217,8 @@ write_csv(x = df_psnu_all,
                                   " - Overview_psnu_tbl_q",
                                   curr_pd,
                                   "_", format(Sys.Date(), "%Y%m%d"),
-                                  ".csv")))
+                                  ".csv")),
+          na = "")
 
 
 
@@ -248,7 +250,8 @@ write_csv(x = df_cntry_peds,
                                   " - Overview_peds_tbl_q",
                                   curr_pd,
                                   "_", format(Sys.Date(), "%Y%m%d"),
-                                  ".csv")))
+                                  ".csv")),
+          na = "")
 
 
 ## table for peds x snu1
@@ -279,7 +282,8 @@ write_csv(x = df_cntry_peds_by_snu1,
                                   " - Overview_peds_x_snu1_tbl_q",
                                   curr_pd,
                                   "_", format(Sys.Date(), "%Y%m%d"),
-                                  ".csv")))
+                                  ".csv")),
+          na = "")
 
 
 

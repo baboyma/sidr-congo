@@ -343,7 +343,9 @@ map_viralload <-
 #' @param df
 #' @param vl_variable
 #'
-plot_viralload <- function(df, vl_variable = "VLC") {
+plot_viralload <-
+    function(df,
+             vl_variable = "VLC") {
 
     # Reorder Provinces
     plot <- df %>%
